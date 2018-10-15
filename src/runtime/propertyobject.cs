@@ -33,6 +33,7 @@ namespace Python.Runtime
             MethodInfo getter = self.getter;
             object result;
 
+            IntPtr ts = IntPtr.Zero;
 
             if (getter == null)
             {
@@ -48,13 +49,16 @@ namespace Python.Runtime
                     return IntPtr.Zero;
                 }
 
+                ts = PythonEngine.BeginAllowThreads();
                 try
                 {
                     result = self.info.GetValue(null, null);
+                    PythonEngine.EndAllowThreads(ts);
                     return Converter.ToPython(result, self.info.PropertyType);
                 }
                 catch (Exception e)
                 {
+                    PythonEngine.EndAllowThreads(ts);
                     return Exceptions.RaiseTypeError(e.Message);
                 }
             }
@@ -65,9 +69,11 @@ namespace Python.Runtime
                 return Exceptions.RaiseTypeError("invalid target");
             }
 
+            ts = PythonEngine.BeginAllowThreads();
             try
             {
                 result = self.info.GetValue(co.inst, null);
+                PythonEngine.EndAllowThreads(ts);
                 return Converter.ToPython(result, self.info.PropertyType);
             }
             catch (Exception e)
@@ -76,6 +82,7 @@ namespace Python.Runtime
                 {
                     e = e.InnerException;
                 }
+                PythonEngine.EndAllowThreads(ts);
                 Exceptions.SetError(e);
                 return IntPtr.Zero;
             }
@@ -92,6 +99,7 @@ namespace Python.Runtime
             var self = (PropertyObject)GetManagedObject(ds);
             MethodInfo setter = self.setter;
             object newval;
+            IntPtr ts = IntPtr.Zero;
 
             if (val == IntPtr.Zero)
             {
@@ -132,12 +140,15 @@ namespace Python.Runtime
                         Exceptions.RaiseTypeError("invalid target");
                         return -1;
                     }
+                    ts = PythonEngine.BeginAllowThreads();
                     self.info.SetValue(co.inst, newval, null);
                 }
                 else
                 {
+                    ts = PythonEngine.BeginAllowThreads();
                     self.info.SetValue(null, newval, null);
                 }
+                PythonEngine.EndAllowThreads(ts);
                 return 0;
             }
             catch (Exception e)
@@ -145,6 +156,11 @@ namespace Python.Runtime
                 if (e.InnerException != null)
                 {
                     e = e.InnerException;
+                }
+
+                if (IntPtr.Zero != ts)
+                {
+                    PythonEngine.EndAllowThreads(ts);
                 }
                 Exceptions.SetError(e);
                 return -1;
