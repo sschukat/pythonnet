@@ -2,15 +2,17 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.26730.3
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Python.Runtime.15", "src/runtime/Python.Runtime.15.csproj", "{2759F4FF-716B-4828-916F-50FA86613DFC}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Python.Runtime.15", "src\runtime\Python.Runtime.15.csproj", "{2759F4FF-716B-4828-916F-50FA86613DFC}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Python.EmbeddingTest.15", "src/embed_tests/Python.EmbeddingTest.15.csproj", "{66B8D01A-9906-452A-B09E-BF75EA76468F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Python.EmbeddingTest.15", "src\embed_tests\Python.EmbeddingTest.15.csproj", "{66B8D01A-9906-452A-B09E-BF75EA76468F}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "clrmodule.15", "src/clrmodule/clrmodule.15.csproj", "{E08678D4-9A52-4AD5-B63D-8EBC7399981B}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "clrmodule.15", "src\clrmodule\clrmodule.15.csproj", "{E08678D4-9A52-4AD5-B63D-8EBC7399981B}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Console.15", "src/console/Console.15.csproj", "{CDAD305F-8E72-492C-A314-64CF58D472A0}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Console.15", "src\console\Console.15.csproj", "{CDAD305F-8E72-492C-A314-64CF58D472A0}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Python.Test.15", "src/testing/Python.Test.15.csproj", "{F94B547A-E97E-4500-8D53-B4D64D076E5F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Python.Test.15", "src\testing\Python.Test.15.csproj", "{F94B547A-E97E-4500-8D53-B4D64D076E5F}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Python.ReflectionOnlyTest.15", "src\reflectiononly_testing\Python.ReflectionOnlyTest.15.csproj", "{1E44571F-2EEA-4E3C-8DF6-07673A97C9DB}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -184,6 +186,38 @@ Global
 		{F94B547A-E97E-4500-8D53-B4D64D076E5F}.ReleaseWinPY3|x64.Build.0 = ReleaseWinPY3|x64
 		{F94B547A-E97E-4500-8D53-B4D64D076E5F}.ReleaseWinPY3|x86.ActiveCfg = ReleaseWinPY3|x86
 		{F94B547A-E97E-4500-8D53-B4D64D076E5F}.ReleaseWinPY3|x86.Build.0 = ReleaseWinPY3|x86
+		{1E44571F-2EEA-4E3C-8DF6-07673A97C9DB}.DebugMono|x64.ActiveCfg = DebugMono|x64
+		{1E44571F-2EEA-4E3C-8DF6-07673A97C9DB}.DebugMono|x64.Build.0 = DebugMono|x64
+		{1E44571F-2EEA-4E3C-8DF6-07673A97C9DB}.DebugMono|x86.ActiveCfg = DebugMono|x86
+		{1E44571F-2EEA-4E3C-8DF6-07673A97C9DB}.DebugMono|x86.Build.0 = DebugMono|x86
+		{1E44571F-2EEA-4E3C-8DF6-07673A97C9DB}.DebugMonoPY3|x64.ActiveCfg = DebugMonoPY3|x64
+		{1E44571F-2EEA-4E3C-8DF6-07673A97C9DB}.DebugMonoPY3|x64.Build.0 = DebugMonoPY3|x64
+		{1E44571F-2EEA-4E3C-8DF6-07673A97C9DB}.DebugMonoPY3|x86.ActiveCfg = DebugMonoPY3|x86
+		{1E44571F-2EEA-4E3C-8DF6-07673A97C9DB}.DebugMonoPY3|x86.Build.0 = DebugMonoPY3|x86
+		{1E44571F-2EEA-4E3C-8DF6-07673A97C9DB}.DebugWin|x64.ActiveCfg = DebugWin|x64
+		{1E44571F-2EEA-4E3C-8DF6-07673A97C9DB}.DebugWin|x64.Build.0 = DebugWin|x64
+		{1E44571F-2EEA-4E3C-8DF6-07673A97C9DB}.DebugWin|x86.ActiveCfg = DebugWin|x86
+		{1E44571F-2EEA-4E3C-8DF6-07673A97C9DB}.DebugWin|x86.Build.0 = DebugWin|x86
+		{1E44571F-2EEA-4E3C-8DF6-07673A97C9DB}.DebugWinPY3|x64.ActiveCfg = DebugWinPY3|x64
+		{1E44571F-2EEA-4E3C-8DF6-07673A97C9DB}.DebugWinPY3|x64.Build.0 = DebugWinPY3|x64
+		{1E44571F-2EEA-4E3C-8DF6-07673A97C9DB}.DebugWinPY3|x86.ActiveCfg = DebugWinPY3|x86
+		{1E44571F-2EEA-4E3C-8DF6-07673A97C9DB}.DebugWinPY3|x86.Build.0 = DebugWinPY3|x86
+		{1E44571F-2EEA-4E3C-8DF6-07673A97C9DB}.ReleaseMono|x64.ActiveCfg = ReleaseMono|x64
+		{1E44571F-2EEA-4E3C-8DF6-07673A97C9DB}.ReleaseMono|x64.Build.0 = ReleaseMono|x64
+		{1E44571F-2EEA-4E3C-8DF6-07673A97C9DB}.ReleaseMono|x86.ActiveCfg = ReleaseMono|x86
+		{1E44571F-2EEA-4E3C-8DF6-07673A97C9DB}.ReleaseMono|x86.Build.0 = ReleaseMono|x86
+		{1E44571F-2EEA-4E3C-8DF6-07673A97C9DB}.ReleaseMonoPY3|x64.ActiveCfg = ReleaseMonoPY3|x64
+		{1E44571F-2EEA-4E3C-8DF6-07673A97C9DB}.ReleaseMonoPY3|x64.Build.0 = ReleaseMonoPY3|x64
+		{1E44571F-2EEA-4E3C-8DF6-07673A97C9DB}.ReleaseMonoPY3|x86.ActiveCfg = ReleaseMonoPY3|x86
+		{1E44571F-2EEA-4E3C-8DF6-07673A97C9DB}.ReleaseMonoPY3|x86.Build.0 = ReleaseMonoPY3|x86
+		{1E44571F-2EEA-4E3C-8DF6-07673A97C9DB}.ReleaseWin|x64.ActiveCfg = ReleaseWin|x64
+		{1E44571F-2EEA-4E3C-8DF6-07673A97C9DB}.ReleaseWin|x64.Build.0 = ReleaseWin|x64
+		{1E44571F-2EEA-4E3C-8DF6-07673A97C9DB}.ReleaseWin|x86.ActiveCfg = ReleaseWin|x86
+		{1E44571F-2EEA-4E3C-8DF6-07673A97C9DB}.ReleaseWin|x86.Build.0 = ReleaseWin|x86
+		{1E44571F-2EEA-4E3C-8DF6-07673A97C9DB}.ReleaseWinPY3|x64.ActiveCfg = ReleaseWinPY3|x64
+		{1E44571F-2EEA-4E3C-8DF6-07673A97C9DB}.ReleaseWinPY3|x64.Build.0 = ReleaseWinPY3|x64
+		{1E44571F-2EEA-4E3C-8DF6-07673A97C9DB}.ReleaseWinPY3|x86.ActiveCfg = ReleaseWinPY3|x86
+		{1E44571F-2EEA-4E3C-8DF6-07673A97C9DB}.ReleaseWinPY3|x86.Build.0 = ReleaseWinPY3|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

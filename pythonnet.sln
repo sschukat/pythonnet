@@ -12,6 +12,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Console", "src\console\Cons
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "clrmodule", "src\clrmodule\clrmodule.csproj", "{86E834DE-1139-4511-96CC-69636A56E7AC}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Python.ReflectionOnlyTest", "src\reflectiononly_testing\Python.ReflectionOnlyTest.csproj", "{86b65798-F5AF-4006-A4D5-5BA40CDD80C1}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		DebugMono|x64 = DebugMono|x64
@@ -184,7 +186,39 @@ Global
 		{86E834DE-1139-4511-96CC-69636A56E7AC}.ReleaseWinPY3|x64.Build.0 = ReleaseWinPY3|x64
 		{86E834DE-1139-4511-96CC-69636A56E7AC}.ReleaseWinPY3|x86.ActiveCfg = ReleaseWinPY3|x86
 		{86E834DE-1139-4511-96CC-69636A56E7AC}.ReleaseWinPY3|x86.Build.0 = ReleaseWinPY3|x86
-	EndGlobalSection
+		{86b65798-F5AF-4006-A4D5-5BA40CDD80C1}.DebugMono|x64.ActiveCfg = DebugMono|x64
+		{86b65798-F5AF-4006-A4D5-5BA40CDD80C1}.DebugMono|x64.Build.0 = DebugMono|x64
+		{86b65798-F5AF-4006-A4D5-5BA40CDD80C1}.DebugMono|x86.ActiveCfg = DebugMono|x86
+		{86b65798-F5AF-4006-A4D5-5BA40CDD80C1}.DebugMono|x86.Build.0 = DebugMono|x86
+		{86b65798-F5AF-4006-A4D5-5BA40CDD80C1}.DebugMonoPY3|x64.ActiveCfg = DebugMonoPY3|x64
+		{86b65798-F5AF-4006-A4D5-5BA40CDD80C1}.DebugMonoPY3|x64.Build.0 = DebugMonoPY3|x64
+		{86b65798-F5AF-4006-A4D5-5BA40CDD80C1}.DebugMonoPY3|x86.ActiveCfg = DebugMonoPY3|x86
+		{86b65798-F5AF-4006-A4D5-5BA40CDD80C1}.DebugMonoPY3|x86.Build.0 = DebugMonoPY3|x86
+		{86b65798-F5AF-4006-A4D5-5BA40CDD80C1}.DebugWin|x64.ActiveCfg = DebugWin|x64
+		{86b65798-F5AF-4006-A4D5-5BA40CDD80C1}.DebugWin|x64.Build.0 = DebugWin|x64
+		{86b65798-F5AF-4006-A4D5-5BA40CDD80C1}.DebugWin|x86.ActiveCfg = DebugWin|x86
+		{86b65798-F5AF-4006-A4D5-5BA40CDD80C1}.DebugWin|x86.Build.0 = DebugWin|x86
+		{86b65798-F5AF-4006-A4D5-5BA40CDD80C1}.DebugWinPY3|x64.ActiveCfg = DebugWinPY3|x64
+		{86b65798-F5AF-4006-A4D5-5BA40CDD80C1}.DebugWinPY3|x64.Build.0 = DebugWinPY3|x64
+		{86b65798-F5AF-4006-A4D5-5BA40CDD80C1}.DebugWinPY3|x86.ActiveCfg = DebugWinPY3|x86
+		{86b65798-F5AF-4006-A4D5-5BA40CDD80C1}.DebugWinPY3|x86.Build.0 = DebugWinPY3|x86
+		{86b65798-F5AF-4006-A4D5-5BA40CDD80C1}.ReleaseMono|x64.ActiveCfg = ReleaseMono|x64
+		{86b65798-F5AF-4006-A4D5-5BA40CDD80C1}.ReleaseMono|x64.Build.0 = ReleaseMono|x64
+		{86b65798-F5AF-4006-A4D5-5BA40CDD80C1}.ReleaseMono|x86.ActiveCfg = ReleaseMono|x86
+		{86b65798-F5AF-4006-A4D5-5BA40CDD80C1}.ReleaseMono|x86.Build.0 = ReleaseMono|x86
+		{86b65798-F5AF-4006-A4D5-5BA40CDD80C1}.ReleaseMonoPY3|x64.ActiveCfg = ReleaseMonoPY3|x64
+		{86b65798-F5AF-4006-A4D5-5BA40CDD80C1}.ReleaseMonoPY3|x64.Build.0 = ReleaseMonoPY3|x64
+		{86b65798-F5AF-4006-A4D5-5BA40CDD80C1}.ReleaseMonoPY3|x86.ActiveCfg = ReleaseMonoPY3|x86
+		{86b65798-F5AF-4006-A4D5-5BA40CDD80C1}.ReleaseMonoPY3|x86.Build.0 = ReleaseMonoPY3|x86
+		{86b65798-F5AF-4006-A4D5-5BA40CDD80C1}.ReleaseWin|x64.ActiveCfg = ReleaseWin|x64
+		{86b65798-F5AF-4006-A4D5-5BA40CDD80C1}.ReleaseWin|x64.Build.0 = ReleaseWin|x64
+		{86b65798-F5AF-4006-A4D5-5BA40CDD80C1}.ReleaseWin|x86.ActiveCfg = ReleaseWin|x86
+		{86b65798-F5AF-4006-A4D5-5BA40CDD80C1}.ReleaseWin|x86.Build.0 = ReleaseWin|x86
+		{86b65798-F5AF-4006-A4D5-5BA40CDD80C1}.ReleaseWinPY3|x64.ActiveCfg = ReleaseWinPY3|x64
+		{86b65798-F5AF-4006-A4D5-5BA40CDD80C1}.ReleaseWinPY3|x64.Build.0 = ReleaseWinPY3|x64
+		{86b65798-F5AF-4006-A4D5-5BA40CDD80C1}.ReleaseWinPY3|x86.ActiveCfg = ReleaseWinPY3|x86
+		{86b65798-F5AF-4006-A4D5-5BA40CDD80C1}.ReleaseWinPY3|x86.Build.0 = ReleaseWinPY3|x86
+        EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
