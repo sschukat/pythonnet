@@ -146,7 +146,12 @@ namespace Python.Runtime
             // If class has constructors, generate an __doc__ attribute.
             IntPtr doc = IntPtr.Zero;
             Type marker = typeof(DocStringAttribute);
-            var attrs = (Attribute[])type.GetCustomAttributes(marker, false);
+            Attribute[] attrs = new DocStringAttribute[] { };
+            if(!type.Assembly.ReflectionOnly)
+            {
+                attrs = (Attribute[])type.GetCustomAttributes(marker, false);
+            }
+            
             if (attrs.Length == 0)
             {
                 doc = IntPtr.Zero;
