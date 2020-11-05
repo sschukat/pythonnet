@@ -22,7 +22,7 @@ namespace Python.Runtime
     }
 
     [PyGIL]
-    public class PyScope : DynamicObject, IDisposable
+    public class PyScope : DynamicObject, IPyDisposable
     {
         public readonly string Name;
 
@@ -37,6 +37,7 @@ namespace Python.Runtime
         internal readonly IntPtr variables;
 
         private bool _isDisposed;
+        private bool _finalized = false;
 
         /// <summary>
         /// The Manager this scope associated with.
@@ -65,12 +66,13 @@ namespace Python.Runtime
             obj = ptr;
             //Refcount of the variables not increase
             variables = Runtime.PyModule_GetDict(obj);
-            Runtime.CheckExceptionOccurred();
+            PythonException.ThrowIfIsNull(variables);
 
-            Runtime.PyDict_SetItemString(
+            int res = Runtime.PyDict_SetItemString(
                 variables, "__builtins__",
                 Runtime.PyEval_GetBuiltins()
             );
+            PythonException.ThrowIfIsNotZero(res);
             this.Name = this.Get<string>("__name__");
         }
 
@@ -236,7 +238,7 @@ namespace Python.Runtime
             Check();
             IntPtr _locals = locals == null ? variables : locals.obj;
             IntPtr ptr = Runtime.PyEval_EvalCode(script.Handle, variables, _locals);
-            Runtime.CheckExceptionOccurred();
+            PythonException.ThrowIfIsNull(ptr);
             if (ptr == Runtime.PyNone)
             {
                 Runtime.XDecref(ptr);
@@ -276,12 +278,12 @@ namespace Python.Runtime
         {
             Check();
             IntPtr _locals = locals == null ? variables : locals.obj;
-            var flag = (IntPtr)Runtime.Py_eval_input;
-            IntPtr ptr = Runtime.PyRun_String(
-                code, flag, variables, _locals
+
+            NewReference reference = Runtime.PyRun_String(
+                code, RunFlagType.Eval, variables, _locals
             );
-            Runtime.CheckExceptionOccurred();
-            return new PyObject(ptr);
+            PythonException.ThrowIfIsNull(reference);
+            return reference.MoveToPyObject();
         }
 
         /// <summary>
@@ -314,16 +316,11 @@ namespace Python.Runtime
 
         private void Exec(string code, IntPtr _globals, IntPtr _locals)
         {
-            var flag = (IntPtr)Runtime.Py_file_input;
-            IntPtr ptr = Runtime.PyRun_String(
-                code, flag, _globals, _locals
+            NewReference reference = Runtime.PyRun_String(
+                code, RunFlagType.File, _globals, _locals
             );
-            Runtime.CheckExceptionOccurred();
-            if (ptr != Runtime.PyNone)
-            {
-                throw new PythonException();
-            }
-            Runtime.XDecref(ptr);
+            PythonException.ThrowIfIsNull(reference);
+            reference.Dispose();
         }
 
         /// <summary>
@@ -525,21 +522,32 @@ namespace Python.Runtime
             this.OnDispose?.Invoke(this);
         }
 
+        public IntPtr[] GetTrackedHandles()
+        {
+            return new IntPtr[] { obj };
+        }
+
         ~PyScope()
         {
-            // We needs to disable Finalizers until it's valid implementation.
-            // Current implementation can produce low probability floating bugs.
-            return;
-
-            Dispose();
+            if (_finalized || _isDisposed)
+            {
+                return;
+            }
+            _finalized = true;
+            Finalizer.Instance.AddFinalizedObject(this);
         }
     }
 
     public class PyScopeManager
     {
-        public readonly static PyScopeManager Global = new PyScopeManager();
+        public static PyScopeManager Global;
 
         private Dictionary<string, PyScope> NamedScopes = new Dictionary<string, PyScope>();
+
+        internal static void Reset()
+        {
+            Global = new PyScopeManager();
+        }
 
         internal PyScope NewScope(string name)
         {

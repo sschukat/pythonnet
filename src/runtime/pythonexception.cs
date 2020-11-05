@@ -1,4 +1,6 @@
 using System;
+using System.Runtime.CompilerServices;
+using System.Text;
 
 namespace Python.Runtime
 {
@@ -6,7 +8,7 @@ namespace Python.Runtime
     /// Provides a managed interface to exceptions thrown by the Python
     /// runtime.
     /// </summary>
-    public class PythonException : System.Exception
+    public class PythonException : System.Exception, IPyDisposable
     {
         private IntPtr _pyType = IntPtr.Zero;
         private IntPtr _pyValue = IntPtr.Zero;
@@ -15,14 +17,12 @@ namespace Python.Runtime
         private string _message = "";
         private string _pythonTypeName = "";
         private bool disposed = false;
+        private bool _finalized = false;
 
         public PythonException()
         {
             IntPtr gs = PythonEngine.AcquireLock();
-            Runtime.PyErr_Fetch(ref _pyType, ref _pyValue, ref _pyTB);
-            Runtime.XIncref(_pyType);
-            Runtime.XIncref(_pyValue);
-            Runtime.XIncref(_pyTB);
+            Runtime.PyErr_Fetch(out _pyType, out _pyValue, out _pyTB);
             if (_pyType != IntPtr.Zero && _pyValue != IntPtr.Zero)
             {
                 string type;
@@ -45,11 +45,13 @@ namespace Python.Runtime
             }
             if (_pyTB != IntPtr.Zero)
             {
-                PyObject tb_module = PythonEngine.ImportModule("traceback");
-                Runtime.XIncref(_pyTB);
-                using (var pyTB = new PyObject(_pyTB))
+                using (PyObject tb_module = PythonEngine.ImportModule("traceback"))
                 {
-                    _tb = tb_module.InvokeMethod("format_tb", pyTB).ToString();
+                    Runtime.XIncref(_pyTB);
+                    using (var pyTB = new PyObject(_pyTB))
+                    {
+                        _tb = tb_module.InvokeMethod("format_tb", pyTB).ToString();
+                    }
                 }
             }
             PythonEngine.ReleaseLock(gs);
@@ -60,11 +62,12 @@ namespace Python.Runtime
 
         ~PythonException()
         {
-            // We needs to disable Finalizers until it's valid implementation.
-            // Current implementation can produce low probability floating bugs.
-            return;
-
-            Dispose();
+            if (_finalized || disposed)
+            {
+                return;
+            }
+            _finalized = true;
+            Finalizer.Instance.AddFinalizedObject(this);
         }
 
         /// <summary>
@@ -132,7 +135,7 @@ namespace Python.Runtime
         /// </remarks>
         public override string StackTrace
         {
-            get { return _tb; }
+            get { return _tb + base.StackTrace; }
         }
 
         /// <summary>
@@ -141,6 +144,52 @@ namespace Python.Runtime
         public string PythonTypeName
         {
             get { return _pythonTypeName; }
+        }
+
+        /// <summary>
+        /// Formats this PythonException object into a message as would be printed
+        /// out via the Python console. See traceback.format_exception
+        /// </summary>
+        public string Format()
+        {
+            string res;
+            IntPtr gs = PythonEngine.AcquireLock();
+            try
+            {
+                if (_pyTB != IntPtr.Zero && _pyType != IntPtr.Zero && _pyValue != IntPtr.Zero)
+                {
+                    Runtime.XIncref(_pyType);
+                    Runtime.XIncref(_pyValue);
+                    Runtime.XIncref(_pyTB);
+                    using (PyObject pyType = new PyObject(_pyType))
+                    using (PyObject pyValue = new PyObject(_pyValue))
+                    using (PyObject pyTB = new PyObject(_pyTB))
+                    using (PyObject tb_mod = PythonEngine.ImportModule("traceback"))
+                    {
+                        var buffer = new StringBuilder();
+                        var values = tb_mod.InvokeMethod("format_exception", pyType, pyValue, pyTB);
+                        foreach (PyObject val in values)
+                        {
+                            buffer.Append(val.ToString());
+                        }
+                        res = buffer.ToString();
+                    }
+                }
+                else
+                {
+                    res = StackTrace;
+                }
+            }
+            finally
+            {
+                PythonEngine.ReleaseLock(gs);
+            }
+            return res;
+        }
+
+        public bool IsMatches(IntPtr exc)
+        {
+            return Runtime.PyErr_GivenExceptionMatches(PyType, exc) != 0;
         }
 
         /// <summary>
@@ -159,18 +208,34 @@ namespace Python.Runtime
                 if (Runtime.Py_IsInitialized() > 0 && !Runtime.IsFinalizing)
                 {
                     IntPtr gs = PythonEngine.AcquireLock();
-                    Runtime.XDecref(_pyType);
-                    Runtime.XDecref(_pyValue);
+                    if (_pyType != IntPtr.Zero)
+                    {
+                        Runtime.XDecref(_pyType);
+                        _pyType= IntPtr.Zero;
+                    }
+
+                    if (_pyValue != IntPtr.Zero)
+                    {
+                        Runtime.XDecref(_pyValue);
+                        _pyValue = IntPtr.Zero;
+                    }
+
                     // XXX Do we ever get TraceBack? //
                     if (_pyTB != IntPtr.Zero)
                     {
                         Runtime.XDecref(_pyTB);
+                        _pyTB = IntPtr.Zero;
                     }
                     PythonEngine.ReleaseLock(gs);
                 }
                 GC.SuppressFinalize(this);
                 disposed = true;
             }
+        }
+
+        public IntPtr[] GetTrackedHandles()
+        {
+            return new IntPtr[] { _pyType, _pyValue, _pyTB };
         }
 
         /// <summary>
@@ -183,6 +248,30 @@ namespace Python.Runtime
         public static bool Matches(IntPtr ob)
         {
             return Runtime.PyErr_ExceptionMatches(ob) != 0;
+        }
+
+        public static void ThrowIfIsNull(IntPtr ob)
+        {
+            if (ob == IntPtr.Zero)
+            {
+                throw new PythonException();
+            }
+        }
+
+        internal static void ThrowIfIsNull(BorrowedReference reference)
+        {
+            if (reference.IsNull)
+            {
+                throw new PythonException();
+            }
+        }
+
+        public static void ThrowIfIsNotZero(int value)
+        {
+            if (value != 0)
+            {
+                throw new PythonException();
+            }
         }
     }
 }

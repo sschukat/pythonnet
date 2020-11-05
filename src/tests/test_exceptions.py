@@ -6,8 +6,7 @@ import sys
 
 import System
 import pytest
-
-from ._compat import PY2, PY3, pickle, text_type
+import pickle
 
 
 def test_unified_exception_semantics():
@@ -270,12 +269,6 @@ def test_str_of_exception():
     with pytest.raises(FormatException) as cm:
         Convert.ToDateTime('this will fail')
 
-    e = cm.value
-    # fix for international installation
-    msg = text_type(e).encode("utf8")
-    fnd = text_type('System.Convert.ToDateTime').encode("utf8")
-    assert msg.find(fnd) > -1, msg
-
 
 def test_python_compat_of_managed_exceptions():
     """Test managed exceptions compatible with Python's implementation"""
@@ -284,14 +277,11 @@ def test_python_compat_of_managed_exceptions():
 
     e = OverflowException(msg)
     assert str(e) == msg
-    assert text_type(e) == msg
 
     assert e.args == (msg,)
     assert isinstance(e.args, tuple)
-    if PY3:
-        assert repr(e) == "OverflowException('Simple message',)"
-    elif PY2:
-        assert repr(e) == "OverflowException(u'Simple message',)"
+    strexp = "OverflowException('Simple message"
+    assert repr(e)[:len(strexp)] == strexp
 
 
 def test_exception_is_instance_of_system_object():
@@ -329,7 +319,6 @@ def test_pickling_exceptions():
     assert exc.args == loaded.args
 
 
-@pytest.mark.skipif(PY2, reason="__cause__ isn't implemented in PY2")
 def test_chained_exceptions():
     from Python.Test import ExceptionTest
 

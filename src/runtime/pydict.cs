@@ -29,9 +29,8 @@ namespace Python.Runtime
         /// <remarks>
         /// Creates a new Python dictionary object.
         /// </remarks>
-        public PyDict()
+        public PyDict() : base(Runtime.PyDict_New())
         {
-            obj = Runtime.PyDict_New();
             if (obj == IntPtr.Zero)
             {
                 throw new PythonException();
@@ -47,14 +46,13 @@ namespace Python.Runtime
         /// ArgumentException will be thrown if the given object is not a
         /// Python dictionary object.
         /// </remarks>
-        public PyDict(PyObject o)
+        public PyDict(PyObject o) : base(o.obj)
         {
+            Runtime.XIncref(o.obj);
             if (!IsDictType(o))
             {
                 throw new ArgumentException("object is not a dict");
             }
-            Runtime.XIncref(o.obj);
-            obj = o.obj;
         }
 
 
@@ -139,12 +137,20 @@ namespace Python.Runtime
         /// </remarks>
         public PyObject Items()
         {
-            IntPtr items = Runtime.PyDict_Items(obj);
-            if (items == IntPtr.Zero)
+            var items = Runtime.PyDict_Items(this.obj);
+            try
             {
-                throw new PythonException();
+                if (items.IsNull())
+                {
+                    throw new PythonException();
+                }
+
+                return items.MoveToPyObject();
             }
-            return new PyObject(items);
+            finally
+            {
+                items.Dispose();
+            }
         }
 
 

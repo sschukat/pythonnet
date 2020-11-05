@@ -1,5 +1,6 @@
 using System;
 using System.Reflection;
+using System.Text;
 
 namespace Python.Runtime
 {
@@ -10,6 +11,7 @@ namespace Python.Runtime
     /// standard MethodBinder because of a difference in invoking constructors
     /// using reflection (which is seems to be a CLR bug).
     /// </summary>
+    [Serializable]
     internal class ConstructorBinder : MethodBinder
     {
         private Type _containingType;
@@ -88,12 +90,20 @@ namespace Python.Runtime
                 // any extra args are intended for the subclass' __init__.
 
                 IntPtr eargs = Runtime.PyTuple_New(0);
-                binding = Bind(inst, eargs, kw);
+                binding = Bind(inst, eargs, IntPtr.Zero);
                 Runtime.XDecref(eargs);
 
                 if (binding == null)
                 {
-                    Exceptions.SetError(Exceptions.TypeError, "no constructor matches given arguments");
+                    var errorMessage = new StringBuilder("No constructor matches given arguments");
+                    if (info != null && info.IsConstructor && info.DeclaringType != null)
+                    {
+                        errorMessage.Append(" for ").Append(info.DeclaringType.Name);
+                    }
+
+                    errorMessage.Append(": ");
+                    AppendArgumentTypes(to: errorMessage, args);
+                    Exceptions.SetError(Exceptions.TypeError, errorMessage.ToString());
                     return null;
                 }
             }

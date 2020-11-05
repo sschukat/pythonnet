@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Resources;
 
 namespace Python.Runtime
 {
@@ -15,7 +16,7 @@ namespace Python.Runtime
         {
         }
 
-        static GenericUtil()
+        public static void Reset()
         {
             mapping = new Dictionary<string, Dictionary<string, List<string>>>();
         }

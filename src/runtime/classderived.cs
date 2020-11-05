@@ -1,8 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Resources;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 
@@ -21,12 +22,19 @@ namespace Python.Runtime
     {
     }
 
+    [Serializable]
     internal class ClassDerivedObject : ClassObject
     {
         private static Dictionary<string, AssemblyBuilder> assemblyBuilders;
         private static Dictionary<Tuple<string, string>, ModuleBuilder> moduleBuilders;
 
         static ClassDerivedObject()
+        {
+            assemblyBuilders = new Dictionary<string, AssemblyBuilder>();
+            moduleBuilders = new Dictionary<Tuple<string, string>, ModuleBuilder>();
+        }
+
+        public static void Reset()
         {
             assemblyBuilders = new Dictionary<string, AssemblyBuilder>();
             moduleBuilders = new Dictionary<Tuple<string, string>, ModuleBuilder>();
@@ -92,6 +100,10 @@ namespace Python.Runtime
             // collected while Python still has a reference to it.
             if (Runtime.Refcount(self.pyHandle) == 1)
             {
+
+#if PYTHON_WITH_PYDEBUG
+                Runtime._Py_NewReference(self.pyHandle);
+#endif
                 GCHandle gc = GCHandle.Alloc(self, GCHandleType.Normal);
                 Marshal.WriteIntPtr(self.pyHandle, ObjectOffset.magic(self.tpHandle), (IntPtr)gc);
                 self.gcHandle.Free();
@@ -123,7 +135,7 @@ namespace Python.Runtime
 
             if (null == assemblyName)
             {
-                assemblyName = Assembly.GetExecutingAssembly().FullName;
+                assemblyName = "Python.Runtime.Dynamic";
             }
 
             ModuleBuilder moduleBuilder = GetModuleBuilder(assemblyName, moduleName);
@@ -870,7 +882,7 @@ namespace Python.Runtime
                         // the C# object is being destroyed which must mean there are no more
                         // references to the Python object as well so now we can dealloc the
                         // python object.
-                        IntPtr dict = Marshal.ReadIntPtr(self.pyHandle, ObjectOffset.DictOffset(self.pyHandle));
+                        IntPtr dict = Marshal.ReadIntPtr(self.pyHandle, ObjectOffset.TypeDictOffset(self.tpHandle));
                         if (dict != IntPtr.Zero)
                         {
                             Runtime.XDecref(dict);

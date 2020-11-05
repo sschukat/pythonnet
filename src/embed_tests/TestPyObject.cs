@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
@@ -56,6 +56,12 @@ a = MemberNamesTest()
             {
                 Assert.IsTrue(memberNames.Contains(expectedName), "Could not find member '{0}'.", expectedName);
             }
+        }
+
+        [Test]
+        public void InvokeNull() {
+            var list = PythonEngine.Eval("list");
+            Assert.Throws<ArgumentNullException>(() => list.Invoke(new PyObject[] {null}));
         }
     }
 }
