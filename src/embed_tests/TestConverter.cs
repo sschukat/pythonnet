@@ -1,10 +1,27 @@
-﻿using NUnit.Framework;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+using NUnit.Framework;
+
 using Python.Runtime;
+
+using PyRuntime = Python.Runtime.Runtime;
 
 namespace Python.EmbeddingTest
 {
     public class TestConverter
     {
+        static readonly Type[] _numTypes = new Type[]
+        {
+                typeof(short),
+                typeof(ushort),
+                typeof(int),
+                typeof(uint),
+                typeof(long),
+                typeof(ulong)
+        };
+
         [OneTimeSetUp]
         public void SetUp()
         {
@@ -43,6 +60,81 @@ namespace Python.EmbeddingTest
 
             Assert.IsTrue(converted);
             Assert.IsTrue(((double) convertedValue).Equals(testValue));
+        }
+
+        [Test]
+        public void CovertTypeError()
+        {
+            Type[] floatTypes = new Type[]
+            {
+                typeof(float),
+                typeof(double)
+            };
+            using (var s = new PyString("abc"))
+            {
+                foreach (var type in _numTypes.Union(floatTypes))
+                {
+                    object value;
+                    try
+                    {
+                        bool res = Converter.ToManaged(s.Handle, type, out value, true);
+                        Assert.IsFalse(res);
+                        var bo = Exceptions.ExceptionMatches(Exceptions.TypeError);
+                        Assert.IsTrue(Exceptions.ExceptionMatches(Exceptions.TypeError)
+                            || Exceptions.ExceptionMatches(Exceptions.ValueError));
+                    }
+                    finally
+                    {
+                        Exceptions.Clear();
+                    }
+                }
+            }
+        }
+
+        [Test]
+        public void ConvertOverflow()
+        {
+            using (var num = new PyLong(ulong.MaxValue))
+            {
+                IntPtr largeNum = PyRuntime.PyNumber_Add(num.Handle, num.Handle);
+                try
+                {
+                    object value;
+                    foreach (var type in _numTypes)
+                    {
+                        bool res = Converter.ToManaged(largeNum, type, out value, true);
+                        Assert.IsFalse(res);
+                        Assert.IsTrue(Exceptions.ExceptionMatches(Exceptions.OverflowError));
+                        Exceptions.Clear();
+                    }
+                }
+                finally
+                {
+                    Exceptions.Clear();
+                    PyRuntime.XDecref(largeNum);
+                }
+            }
+        }
+
+        [Test]
+        public void RawListProxy()
+        {
+            var list = new List<string> {"hello", "world"};
+            var listProxy = PyObject.FromManagedObject(list);
+            var clrObject = (CLRObject)ManagedType.GetManagedObject(listProxy.Handle);
+            Assert.AreSame(list, clrObject.inst);
+        }
+
+        [Test]
+        public void RawPyObjectProxy()
+        {
+            var pyObject = "hello world!".ToPython();
+            var pyObjectProxy = PyObject.FromManagedObject(pyObject);
+            var clrObject = (CLRObject)ManagedType.GetManagedObject(pyObjectProxy.Handle);
+            Assert.AreSame(pyObject, clrObject.inst);
+
+            var proxiedHandle = pyObjectProxy.GetAttr("Handle").As<IntPtr>();
+            Assert.AreEqual(pyObject.Handle, proxiedHandle);
         }
     }
 }

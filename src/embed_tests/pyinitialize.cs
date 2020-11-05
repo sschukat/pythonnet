@@ -24,9 +24,11 @@ namespace Python.EmbeddingTest
         public static void LoadDefaultArgs()
         {
             using (new PythonEngine())
-            using (var argv = new PyList(Runtime.Runtime.PySys_GetObject("argv")))
             {
-                Assert.AreNotEqual(0, argv.Length());
+                using(var argv = new PyList(Runtime.Runtime.PySys_GetObject("argv")))
+                {
+                    Assert.AreNotEqual(0, argv.Length());
+                }
             }
         }
 
@@ -35,10 +37,12 @@ namespace Python.EmbeddingTest
         {
             var args = new[] { "test1", "test2" };
             using (new PythonEngine(args))
-            using (var argv = new PyList(Runtime.Runtime.PySys_GetObject("argv")))
             {
-                Assert.AreEqual(args[0], argv[0].ToString());
-                Assert.AreEqual(args[1], argv[1].ToString());
+                using (var argv = new PyList(Runtime.Runtime.PySys_GetObject("argv")))
+                {
+                    Assert.AreEqual(args[0], argv[0].ToString());
+                    Assert.AreEqual(args[1], argv[1].ToString());
+                }
             }
         }
 
@@ -73,6 +77,107 @@ namespace Python.EmbeddingTest
                 PythonEngine.RunSimpleString("Int32(1)");
             }
             PythonEngine.Shutdown();
+        }
+
+        [Test]
+        public void TestScopeIsShutdown()
+        {
+            PythonEngine.Initialize();
+            var scope = PyScopeManager.Global.Create("test");
+            PythonEngine.Shutdown();
+            Assert.That(PyScopeManager.Global.Contains("test"), Is.False);
+        }
+
+        /// <summary>
+        /// Helper for testing the shutdown handlers.
+        /// </summary>
+        int shutdown_count = 0;
+        void OnShutdownIncrement()
+        {
+            shutdown_count++;
+        }
+        void OnShutdownDouble()
+        {
+            shutdown_count *= 2;
+        }
+
+        /// <summary>
+        /// Test the shutdown handlers.
+        /// </summary>
+        [Test]
+        public void ShutdownHandlers()
+        {
+            // Test we can run one shutdown handler.
+            shutdown_count = 0;
+            PythonEngine.Initialize();
+            PythonEngine.AddShutdownHandler(OnShutdownIncrement);
+            PythonEngine.Shutdown();
+            Assert.That(shutdown_count, Is.EqualTo(1));
+
+            // Test we can run multiple shutdown handlers in the right order.
+            shutdown_count = 4;
+            PythonEngine.Initialize();
+            PythonEngine.AddShutdownHandler(OnShutdownIncrement);
+            PythonEngine.AddShutdownHandler(OnShutdownDouble);
+            PythonEngine.Shutdown();
+            // Correct: 4 * 2 + 1 = 9
+            // Wrong:  (4 + 1) * 2 = 10
+            Assert.That(shutdown_count, Is.EqualTo(9));
+
+            // Test we can remove shutdown handlers, handling duplicates.
+            shutdown_count = 4;
+            PythonEngine.Initialize();
+            PythonEngine.AddShutdownHandler(OnShutdownIncrement);
+            PythonEngine.AddShutdownHandler(OnShutdownIncrement);
+            PythonEngine.AddShutdownHandler(OnShutdownDouble);
+            PythonEngine.AddShutdownHandler(OnShutdownIncrement);
+            PythonEngine.AddShutdownHandler(OnShutdownDouble);
+            PythonEngine.RemoveShutdownHandler(OnShutdownDouble);
+            PythonEngine.Shutdown();
+            // Correct: (4 + 1) * 2 + 1 + 1 = 12
+            // Wrong:   (4 * 2) + 1 + 1 + 1 = 11
+            Assert.That(shutdown_count, Is.EqualTo(12));
+        }
+
+        [Test]
+        public static void TestRunExitFuncs()
+        {
+            if (Runtime.Runtime.GetDefaultShutdownMode() == ShutdownMode.Normal)
+            {
+                // If the runtime using the normal mode,
+                // callback registered by atexit will be called after we release the clr information,
+                // thus there's no chance we can check it here.
+                Assert.Ignore("Skip on normal mode");
+            }
+            Runtime.Runtime.Initialize();
+            PyObject atexit;
+            try
+            {
+                atexit = Py.Import("atexit");
+            }
+            catch (PythonException e)
+            {
+                string msg = e.ToString();
+                Runtime.Runtime.Shutdown();
+
+                if (e.IsMatches(Exceptions.ImportError))
+                {
+                    Assert.Ignore("no atexit module");
+                }
+                else
+                {
+                    Assert.Fail(msg);
+                }
+                return;
+            }
+            bool called = false;
+            Action callback = () =>
+            {
+                called = true;
+            };
+            atexit.InvokeMethod("register", callback.ToPython());
+            Runtime.Runtime.Shutdown();
+            Assert.True(called);
         }
     }
 }

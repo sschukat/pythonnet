@@ -7,13 +7,12 @@ import Python.Test as Test
 import System
 import pytest
 
-from ._compat import DictProxyType, range
+from .utils import DictProxyType
 
 
 def test_basic_reference_type():
     """Test usage of CLR defined reference types."""
     assert System.String.Empty == ""
-
 
 def test_basic_value_type():
     """Test usage of CLR defined value types."""
@@ -28,7 +27,6 @@ def test_class_standard_attrs():
     assert ClassTest.__module__ == 'Python.Test'
     assert isinstance(ClassTest.__dict__, DictProxyType)
     assert len(ClassTest.__doc__) > 0
-
 
 def test_class_docstrings():
     """Test standard class docstring generation"""
@@ -57,6 +55,14 @@ def test_non_public_class():
 
     with pytest.raises(AttributeError):
         _ = Test.InternalClass
+
+def test_non_exported():
+    """Test [PyExport(false)]"""
+    with pytest.raises(ImportError):
+        from Python.Test import NonExportable
+
+    with pytest.raises(AttributeError):
+        _ = Test.NonExportable
 
 
 def test_basic_subclass():
@@ -165,6 +171,23 @@ def test_ienumerator_iteration():
 
     for item in chars:
         assert item in 'test string'
+
+def test_iterable():
+    """Test what objects are Iterable"""
+    from collections.abc import Iterable
+    from Python.Test import ClassTest
+
+    assert isinstance(System.String.Empty, Iterable)
+    assert isinstance(ClassTest.GetArrayList(), Iterable)
+    assert isinstance(ClassTest.GetEnumerator(), Iterable)
+    assert (not isinstance(ClassTest, Iterable))
+    assert (not isinstance(ClassTest(), Iterable))
+
+    class ShouldBeIterable(ClassTest):
+        def __iter__(self):
+            return iter([])
+
+    assert isinstance(ShouldBeIterable(), Iterable)
 
 
 def test_override_get_item():
@@ -281,3 +304,24 @@ def test_self_callback():
     testobj.DoCallback()
     assert testobj.PyCallbackWasCalled
     assert testobj.SameReference
+
+
+def test_method_inheritance():
+    """Ensure that we call the overridden method instead of the one provided in
+       the base class."""
+
+    base = Test.BaseClass()
+    derived = Test.DerivedClass()
+
+    assert base.IsBase() == True
+    assert derived.IsBase() == False
+
+
+def test_callable():
+    """Test that only delegate subtypes are callable"""
+
+    def foo():
+        pass
+
+    assert callable(System.String("foo")) == False
+    assert callable(System.Action(foo)) == True

@@ -1,15 +1,50 @@
-﻿using System;
+using System;
+using System.Collections.Generic;
 using NUnit.Framework;
 using Python.Runtime;
+using Python.Runtime.Platform;
 
 namespace Python.EmbeddingTest
 {
     public class TestRuntime
     {
+        [OneTimeSetUp]
+        public void SetUp()
+        {
+            // We needs to ensure that no any engines are running.
+            if (PythonEngine.IsInitialized)
+            {
+                PythonEngine.Shutdown();
+            }
+        }
+
+        /// <summary>
+        /// Test the cache of the information from the platform module.
+        ///
+        /// Test fails on platforms we haven't implemented yet.
+        /// </summary>
+        [Test]
+        public static void PlatformCache()
+        {
+            Runtime.Runtime.Initialize();
+
+            Assert.That(NativeCodePageHelper.Machine, Is.Not.EqualTo(MachineType.Other));
+            Assert.That(!string.IsNullOrEmpty(NativeCodePageHelper.MachineName));
+
+            Assert.That(NativeCodePageHelper.OperatingSystem, Is.Not.EqualTo(OperatingSystemType.Other));
+            Assert.That(!string.IsNullOrEmpty(NativeCodePageHelper.OperatingSystemName));
+
+            Runtime.Runtime.Shutdown();
+        }
+
         [Test]
         public static void Py_IsInitializedValue()
         {
-            Runtime.Runtime.Py_Finalize(); // In case another test left it on.
+            if (Runtime.Runtime.Py_IsInitialized() == 1)
+            {
+                Runtime.Runtime.PyGILState_Ensure();
+            }
+            Runtime.Runtime.Py_Finalize();
             Assert.AreEqual(0, Runtime.Runtime.Py_IsInitialized());
             Runtime.Runtime.Py_Initialize();
             Assert.AreEqual(1, Runtime.Runtime.Py_IsInitialized());
@@ -79,9 +114,15 @@ namespace Python.EmbeddingTest
             // Create an instance of threading.Lock, which is one of the very few types that does not have the
             // TypeFlags.HaveIter set in Python 2. This tests a different code path in PyObject_IsIterable and PyIter_Check.
             var threading = Runtime.Runtime.PyImport_ImportModule("threading");
+            Exceptions.ErrorCheck(threading);
             var threadingDict = Runtime.Runtime.PyModule_GetDict(threading);
+            Exceptions.ErrorCheck(threadingDict);
             var lockType = Runtime.Runtime.PyDict_GetItemString(threadingDict, "Lock");
+            if (lockType == IntPtr.Zero)
+                throw new KeyNotFoundException("class 'Lock' was not found in 'threading'");
+
             var lockInstance = Runtime.Runtime.PyObject_CallObject(lockType, Runtime.Runtime.PyTuple_New(0));
+            Exceptions.ErrorCheck(lockInstance);
 
             Assert.IsFalse(Runtime.Runtime.PyObject_IsIterable(lockInstance));
             Assert.IsFalse(Runtime.Runtime.PyIter_Check(lockInstance));

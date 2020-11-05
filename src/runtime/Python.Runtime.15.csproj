@@ -7,14 +7,26 @@
     <AssetTargetFallback Condition="'$(TargetFramework)'=='net40' AND $(Configuration.Contains('Mono'))">net45</AssetTargetFallback>
     <RootNamespace>Python.Runtime</RootNamespace>
     <AssemblyName>Python.Runtime</AssemblyName>
-    <PackageId>Python.Runtime</PackageId>
-    <VersionPrefix>2.4.0</VersionPrefix>
-    <GenerateAssemblyVersionAttribute>false</GenerateAssemblyVersionAttribute>
-    <GenerateAssemblyCompanyAttribute>false</GenerateAssemblyCompanyAttribute>
-    <GenerateAssemblyConfigurationAttribute>false</GenerateAssemblyConfigurationAttribute>
-    <GenerateAssemblyProductAttribute>false</GenerateAssemblyProductAttribute>
-    <GenerateAssemblyTitleAttribute>false</GenerateAssemblyTitleAttribute>
-    <GenerateAssemblyDescriptionAttribute>false</GenerateAssemblyDescriptionAttribute>
+    <PackageId>pythonnet</PackageId>
+    <VersionPrefix>2.5.0</VersionPrefix>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <Title>Python.NET</Title>
+    <Copyright>Copyright (c) 2006-2020 the contributors of the Python.NET project</Copyright>
+    <Description>Python and CLR (.NET and Mono) cross-platform language interop</Description>
+    <Authors>pythonnet</Authors>
+    <PackageLicenseUrl>https://github.com/pythonnet/pythonnet/blob/master/LICENSE</PackageLicenseUrl>
+    <RepositoryUrl>https://github.com/pythonnet/pythonnet</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <!-- The following is recommended for public projects -->
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <DebugSymbols>true</DebugSymbols>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <!--<PackageReleaseNotes>https://github.com/pythonnet/pythonnet/releases/tag/v2.4.0</PackageReleaseNotes>-->
+    <PackageTags>python interop dynamic dlr Mono pinvoke</PackageTags>
+    <PackageIconUrl>https://raw.githubusercontent.com/pythonnet/pythonnet/master/src/console/python-clear.ico</PackageIconUrl>
+    <PackageProjectUrl>https://pythonnet.github.io/</PackageProjectUrl>
     <OutputPath>bin\</OutputPath>
     <AppendTargetFrameworkToOutputPath Condition="'$(TargetFramework)'=='net40'">false</AppendTargetFrameworkToOutputPath>
     <DocumentationFile Condition="'$(TargetFramework)'=='net40'">$(OutputPath)\$(AssemblyName).xml</DocumentationFile>
@@ -23,7 +35,7 @@
     <SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'">..\..\</SolutionDir>
     <PythonBuildDir Condition="'$(PythonBuildDir)' == ''">$(SolutionDir)\bin\</PythonBuildDir>
     <PublishDir Condition="'$(TargetFramework)'!='net40'">$(PythonBuildDir)\$(TargetFramework)\</PublishDir>
-    <LangVersion>6</LangVersion>
+    <LangVersion>7.3</LangVersion>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
     <AssemblyOriginatorKeyFile>..\pythonnet.snk</AssemblyOriginatorKeyFile>
     <CustomDefineConstants Condition="'$(CustomDefineConstants)' == ''">$(PYTHONNET_DEFINE_CONSTANTS)</CustomDefineConstants>
@@ -35,7 +47,7 @@
     <Python2Version>$(PYTHONNET_PY2_VERSION)</Python2Version>
     <Python2Version Condition="'$(Python2Version)'==''">PYTHON27</Python2Version>
     <Python3Version>$(PYTHONNET_PY3_VERSION)</Python3Version>
-    <Python3Version Condition="'$(Python3Version)'==''">PYTHON36</Python3Version>
+    <Python3Version Condition="'$(Python3Version)'==''">PYTHON38</Python3Version>
     <PythonWinDefineConstants>$(PYTHONNET_WIN_DEFINE_CONSTANTS)</PythonWinDefineConstants>
     <PythonWinDefineConstants Condition="'$(PythonWinDefineConstants)'==''">UCS2</PythonWinDefineConstants>
     <PythonMonoDefineConstants>$(PYTHONNET_MONO_DEFINE_CONSTANTS)</PythonMonoDefineConstants>
@@ -68,10 +80,10 @@
     <DefineConstants Condition="'$(CustomDefineConstants)' == ''">$(DefineConstants);PYTHON3;$(Python3Version);$(PythonMonoDefineConstants)</DefineConstants>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'DebugMono'">
-    <DefineConstants Condition="'$(CustomDefineConstants)' == ''">$(DefineConstants);PYTHON2;$(Python2Version);$(PythonMonoDefineConstants);TRACE;DEBUG</DefineConstants>
+    <DefineConstants Condition="'$(CustomDefineConstants)' == ''">$(DefineConstants);PYTHON2;$(Python2Version);$(PythonMonoDefineConstants);FINALIZER_CHECK;TRACE;DEBUG</DefineConstants>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'DebugMonoPY3'">
-    <DefineConstants Condition="'$(CustomDefineConstants)' == ''">$(DefineConstants);PYTHON3;$(Python3Version);$(PythonMonoDefineConstants);TRACE;DEBUG</DefineConstants>
+    <DefineConstants Condition="'$(CustomDefineConstants)' == ''">$(DefineConstants);PYTHON3;$(Python3Version);$(PythonMonoDefineConstants);FINALIZER_CHECK;TRACE;DEBUG</DefineConstants>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'ReleaseWin'">
     <DefineConstants Condition="'$(CustomDefineConstants)' == ''">$(DefineConstants);PYTHON2;$(Python2Version);$(PythonWinDefineConstants)</DefineConstants>
@@ -80,10 +92,10 @@
     <DefineConstants Condition="'$(CustomDefineConstants)' == ''">$(DefineConstants);PYTHON3;$(Python3Version);$(PythonWinDefineConstants)</DefineConstants>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'DebugWin'">
-    <DefineConstants Condition="'$(CustomDefineConstants)' == ''">$(DefineConstants);PYTHON2;$(Python2Version);$(PythonWinDefineConstants);TRACE;DEBUG</DefineConstants>
+    <DefineConstants Condition="'$(CustomDefineConstants)' == ''">$(DefineConstants);PYTHON2;$(Python2Version);$(PythonWinDefineConstants);FINALIZER_CHECK;TRACE;DEBUG</DefineConstants>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'DebugWinPY3'">
-    <DefineConstants Condition="'$(CustomDefineConstants)' == ''">$(DefineConstants);PYTHON3;$(Python3Version);$(PythonWinDefineConstants);TRACE;DEBUG</DefineConstants>
+    <DefineConstants Condition="'$(CustomDefineConstants)' == ''">$(DefineConstants);PYTHON3;$(Python3Version);$(PythonWinDefineConstants);FINALIZER_CHECK;TRACE;DEBUG</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup Condition=" '$(PythonInteropFile)' != '' ">
@@ -111,7 +123,7 @@
 
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
     <PackageReference Include="System.Security.Permissions" Version="4.4.0" />
-    <PackageReference Include="System.Reflection.Emit" Version="4.3.0" />
+    <PackageReference Include="System.Reflection.Emit" Version="4.7.0" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'net40'">
@@ -120,6 +132,15 @@
 
   <ItemGroup Condition="'$(TargetFramework)'=='net40'">
     <PackageReference Include="Microsoft.TargetingPack.NETFramework.v4.5" Version="1.0.1" ExcludeAssets="All" PrivateAssets="All" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NonCopyableAnalyzer" Version="0.6.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <!-- The following is recommended for public projects -->
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0" PrivateAssets="All" />
   </ItemGroup>
 
   <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
@@ -131,7 +152,7 @@
 
   <Target Name="BeforeBuild" Condition="'$(TargetFramework)'=='net40' AND $(Configuration.Contains('Mono')) AND '$(OS)' != 'Windows_NT'">
     <!--Endless war!-->
-    <Exec Command="cp $(NuGetPackageRoot)/microsoft.targetingpack.netframework.v4.5/1.0.1/lib/net45/System.XML.dll $(NuGetPackageRoot)/microsoft.targetingpack.netframework.v4.5/1.0.1/lib/net45/System.Xml.dll" />
+    <Exec Command="[[ -e $(NuGetPackageRoot)/microsoft.targetingpack.netframework.v4.5/1.0.1/lib/net45/System.Xml.dll ]] || cp $(NuGetPackageRoot)/microsoft.targetingpack.netframework.v4.5/1.0.1/lib/net45/System.XML.dll $(NuGetPackageRoot)/microsoft.targetingpack.netframework.v4.5/1.0.1/lib/net45/System.Xml.dll" />
   </Target>
   <Target Name="AfterBuild">
     <Copy Condition="'$(TargetFramework)'=='net40'" SourceFiles="$(TargetAssembly)" DestinationFolder="$(PythonBuildDir)" />

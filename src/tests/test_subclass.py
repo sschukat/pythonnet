@@ -12,8 +12,6 @@ from Python.Test import (IInterfaceTest, SubClassTest, EventArgsTest,
                          FunctionsTest)
 from System.Collections.Generic import List
 
-from ._compat import range
-
 
 def interface_test_class_fixture(subnamespace):
     """Delay creation of class until test starts."""
@@ -106,8 +104,10 @@ def test_interface():
     assert ob.bar("bar", 2) == "bar/bar"
     assert FunctionsTest.test_bar(ob, "bar", 2) == "bar/bar"
 
-    x = FunctionsTest.pass_through(ob)
-    assert id(x) == id(ob)
+    # pass_through will convert from InterfaceTestClass -> IInterfaceTest,
+    # causing a new wrapper object to be created. Hence id will differ.
+    x = FunctionsTest.pass_through_interface(ob)
+    assert id(x) != id(ob)
 
 
 def test_derived_class():
@@ -128,6 +128,39 @@ def test_derived_class():
     assert id(x) == id(ob)
 
 
+def test_derived_traceback():
+    """Test python exception traceback in class derived from managed base"""
+    class DerivedClass(SubClassTest):
+        __namespace__ = "Python.Test.traceback"
+
+        def foo(self):
+            print (xyzname)
+            return None
+
+    import sys,traceback
+    ob = DerivedClass()
+
+    # direct call
+    try:
+        ob.foo()
+        assert False
+    except:
+        e = sys.exc_info()
+    assert "xyzname" in str(e[1])
+    location = traceback.extract_tb(e[2])[-1]
+    assert location[2] == "foo"
+
+    # call through managed code
+    try:
+        FunctionsTest.test_foo(ob)
+        assert False
+    except:
+        e = sys.exc_info()
+    assert "xyzname" in str(e[1])
+    location = traceback.extract_tb(e[2])[-1]
+    assert location[2] == "foo"
+
+
 def test_create_instance():
     """Test derived instances can be created from managed code"""
     DerivedClass = derived_class_fixture(test_create_instance.__name__)
@@ -142,14 +175,14 @@ def test_create_instance():
     assert id(x) == id(ob)
 
     InterfaceTestClass = interface_test_class_fixture(test_create_instance.__name__)
-    ob2 = FunctionsTest.create_instance(InterfaceTestClass)
+    ob2 = FunctionsTest.create_instance_interface(InterfaceTestClass)
     assert ob2.foo() == "InterfaceTestClass"
     assert FunctionsTest.test_foo(ob2) == "InterfaceTestClass"
     assert ob2.bar("bar", 2) == "bar/bar"
     assert FunctionsTest.test_bar(ob2, "bar", 2) == "bar/bar"
 
-    y = FunctionsTest.pass_through(ob2)
-    assert id(y) == id(ob2)
+    y = FunctionsTest.pass_through_interface(ob2)
+    assert id(y) != id(ob2)
 
 
 def test_events():

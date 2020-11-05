@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -12,6 +12,14 @@ namespace Python.Runtime
     /// </summary>
     public class PythonEngine : IDisposable
     {
+        public static ShutdownMode ShutdownMode
+        {
+            get => Runtime.ShutdownMode;
+            set => Runtime.ShutdownMode = value;
+        }
+
+        public static ShutdownMode DefaultShutdownMode => Runtime.GetDefaultShutdownMode();
+
         private static DelegateManager delegateManager;
         private static bool initialized;
         private static IntPtr _pythonHome = IntPtr.Zero;
@@ -80,6 +88,7 @@ namespace Python.Runtime
             }
             set
             {
+                // this value is null in the beginning
                 Marshal.FreeHGlobal(_pythonHome);
                 _pythonHome = UcsMarshaler.Py3UnicodePy2StringtoPtr(value);
                 Runtime.Py_SetPythonHome(_pythonHome);
@@ -95,10 +104,6 @@ namespace Python.Runtime
             }
             set
             {
-                if (Runtime.IsPython2)
-                {
-                    throw new NotSupportedException("Set PythonPath not supported on Python 2");
-                }
                 Marshal.FreeHGlobal(_pythonPath);
                 _pythonPath = UcsMarshaler.Py3UnicodePy2StringtoPtr(value);
                 Runtime.Py_SetPath(_pythonPath);
@@ -130,6 +135,16 @@ namespace Python.Runtime
             get { return Marshal.PtrToStringAnsi(Runtime.Py_GetCompiler()); }
         }
 
+        /// <summary>
+        /// Set the NoSiteFlag to disable loading the site module.
+        /// Must be called before Initialize.
+        /// https://docs.python.org/3/c-api/init.html#c.Py_NoSiteFlag
+        /// </summary>
+        public static void SetNoSiteFlag()
+        {
+            Runtime.SetNoSiteFlag();
+        }
+
         public static int RunSimpleString(string code)
         {
             return Runtime.PyRun_SimpleString(code);
@@ -140,9 +155,9 @@ namespace Python.Runtime
             Initialize(setSysArgv: true);
         }
 
-        public static void Initialize(bool setSysArgv = true)
+        public static void Initialize(bool setSysArgv = true, bool initSigs = false, ShutdownMode mode = ShutdownMode.Default)
         {
-            Initialize(Enumerable.Empty<string>(), setSysArgv: setSysArgv);
+            Initialize(Enumerable.Empty<string>(), setSysArgv: setSysArgv, initSigs: initSigs, mode);
         }
 
         /// <summary>
@@ -153,74 +168,93 @@ namespace Python.Runtime
         /// more than once, though initialization will only happen on the
         /// first call. It is *not* necessary to hold the Python global
         /// interpreter lock (GIL) to call this method.
+        /// initSigs can be set to 1 to do default python signal configuration. This will override the way signals are handled by the application.
         /// </remarks>
-        public static void Initialize(IEnumerable<string> args, bool setSysArgv = true)
+        public static void Initialize(IEnumerable<string> args, bool setSysArgv = true, bool initSigs = false, ShutdownMode mode = ShutdownMode.Default)
         {
-            if (!initialized)
+            if (initialized)
             {
-                // Creating the delegateManager MUST happen before Runtime.Initialize
-                // is called. If it happens afterwards, DelegateManager's CodeGenerator
-                // throws an exception in its ctor.  This exception is eaten somehow
-                // during an initial "import clr", and the world ends shortly thereafter.
-                // This is probably masking some bad mojo happening somewhere in Runtime.Initialize().
-                delegateManager = new DelegateManager();
-                Runtime.Initialize();
-                initialized = true;
-                Exceptions.Clear();
+                return;
+            }
+            // Creating the delegateManager MUST happen before Runtime.Initialize
+            // is called. If it happens afterwards, DelegateManager's CodeGenerator
+            // throws an exception in its ctor.  This exception is eaten somehow
+            // during an initial "import clr", and the world ends shortly thereafter.
+            // This is probably masking some bad mojo happening somewhere in Runtime.Initialize().
+            delegateManager = new DelegateManager();
+            Runtime.Initialize(initSigs, mode);
+            initialized = true;
+            Exceptions.Clear();
 
-                if (setSysArgv)
-                {
-                    Py.SetArgv(args);
-                }
+            // Make sure we clean up properly on app domain unload.
+            AppDomain.CurrentDomain.DomainUnload += OnDomainUnload;
 
+            // The global scope gets used implicitly quite early on, remember
+            // to clear it out when we shut down.
+            AddShutdownHandler(PyScopeManager.Global.Clear);
+
+            if (setSysArgv)
+            {
+                Py.SetArgv(args);
+            }
+
+            if (mode == ShutdownMode.Normal)
+            {
+                // TOOD: Check if this can be remove completely or not.
                 // register the atexit callback (this doesn't use Py_AtExit as the C atexit
                 // callbacks are called after python is fully finalized but the python ones
                 // are called while the python engine is still running).
-                string code =
-                    "import atexit, clr\n" +
-                    "atexit.register(clr._AtExit)\n";
-                PythonEngine.Exec(code);
+                //string code =
+                //    "import atexit, clr\n" +
+                //    "atexit.register(clr._AtExit)\n";
+                //PythonEngine.Exec(code);
+            }
 
-                // Load the clr.py resource into the clr module
-                IntPtr clr = Python.Runtime.ImportHook.GetCLRModule();
-                IntPtr clr_dict = Runtime.PyModule_GetDict(clr);
+            // Load the clr.py resource into the clr module
+            IntPtr clr = Python.Runtime.ImportHook.GetCLRModule();
+            IntPtr clr_dict = Runtime.PyModule_GetDict(clr);
 
-                var locals = new PyDict();
-                try
+            var locals = new PyDict();
+            try
+            {
+                IntPtr module = Runtime.PyImport_AddModule("clr._extras");
+                IntPtr module_globals = Runtime.PyModule_GetDict(module);
+                IntPtr builtins = Runtime.PyEval_GetBuiltins();
+                Runtime.PyDict_SetItemString(module_globals, "__builtins__", builtins);
+
+                Assembly assembly = Assembly.GetExecutingAssembly();
+                using (Stream stream = assembly.GetManifestResourceStream("clr.py"))
+                using (var reader = new StreamReader(stream))
                 {
-                    IntPtr module = Runtime.PyImport_AddModule("clr._extras");
-                    IntPtr module_globals = Runtime.PyModule_GetDict(module);
-                    IntPtr builtins = Runtime.PyEval_GetBuiltins();
-                    Runtime.PyDict_SetItemString(module_globals, "__builtins__", builtins);
-
-                    Assembly assembly = Assembly.GetExecutingAssembly();
-                    using (Stream stream = assembly.GetManifestResourceStream("clr.py"))
-                    using (var reader = new StreamReader(stream))
-                    {
-                        // add the contents of clr.py to the module
-                        string clr_py = reader.ReadToEnd();
-                        Exec(clr_py, module_globals, locals.Handle);
-                    }
-
-                    // add the imported module to the clr module, and copy the API functions
-                    // and decorators into the main clr module.
-                    Runtime.PyDict_SetItemString(clr_dict, "_extras", module);
-                    foreach (PyObject key in locals.Keys())
-                    {
-                        if (!key.ToString().StartsWith("_") || key.ToString().Equals("__version__"))
-                        {
-                            PyObject value = locals[key];
-                            Runtime.PyDict_SetItem(clr_dict, key.Handle, value.Handle);
-                            value.Dispose();
-                        }
-                        key.Dispose();
-                    }
+                    // add the contents of clr.py to the module
+                    string clr_py = reader.ReadToEnd();
+                    Exec(clr_py, module_globals, locals.Handle);
                 }
-                finally
+
+                // add the imported module to the clr module, and copy the API functions
+                // and decorators into the main clr module.
+                Runtime.PyDict_SetItemString(clr_dict, "_extras", module);
+                using (var keys = locals.Keys())
+                foreach (PyObject key in keys)
                 {
-                    locals.Dispose();
+                    if (!key.ToString().StartsWith("_") || key.ToString().Equals("__version__"))
+                    {
+                        PyObject value = locals[key];
+                        Runtime.PyDict_SetItem(clr_dict, key.Handle, value.Handle);
+                        value.Dispose();
+                    }
+                    key.Dispose();
                 }
             }
+            finally
+            {
+                locals.Dispose();
+            }
+        }
+
+        static void OnDomainUnload(object _, EventArgs __)
+        {
+            Shutdown();
         }
 
         /// <summary>
@@ -228,11 +262,7 @@ namespace Python.Runtime
         /// CPython interpreter process - this bootstraps the managed runtime
         /// when it is imported by the CLR extension module.
         /// </summary>
-#if PYTHON3
         public static IntPtr InitExt()
-#elif PYTHON2
-        public static void InitExt()
-#endif
         {
             try
             {
@@ -272,14 +302,38 @@ namespace Python.Runtime
             catch (PythonException e)
             {
                 e.Restore();
-#if PYTHON3
                 return IntPtr.Zero;
-#endif
             }
 
-#if PYTHON3
             return Python.Runtime.ImportHook.GetCLRModule();
-#endif
+        }
+
+        /// <summary>
+        /// Shutdown Method
+        /// </summary>
+        /// <remarks>
+        /// Shutdown and release resources held by the Python runtime. The
+        /// Python runtime can no longer be used in the current process
+        /// after calling the Shutdown method.
+        /// </remarks>
+        /// <param name="mode">The ShutdownMode to use when shutting down the Runtime</param>
+        public static void Shutdown(ShutdownMode mode)
+        {
+            if (!initialized)
+            {
+                return;
+            }
+            // If the shutdown handlers trigger a domain unload,
+            // don't call shutdown again.
+            AppDomain.CurrentDomain.DomainUnload -= OnDomainUnload;
+
+            PyScopeManager.Global.Clear();
+            ExecuteShutdownHandlers();
+            // Remember to shut down the runtime.
+            Runtime.Shutdown(mode);
+            PyObjectConversions.Reset();
+
+            initialized = false;
         }
 
         /// <summary>
@@ -292,21 +346,72 @@ namespace Python.Runtime
         /// </remarks>
         public static void Shutdown()
         {
-            if (initialized)
-            {
-                PyScopeManager.Global.Clear();
-                Marshal.FreeHGlobal(_pythonHome);
-                _pythonHome = IntPtr.Zero;
-                Marshal.FreeHGlobal(_programName);
-                _programName = IntPtr.Zero;
-                Marshal.FreeHGlobal(_pythonPath);
-                _pythonPath = IntPtr.Zero;
+            Shutdown(Runtime.ShutdownMode);
+        }
 
-                Runtime.Shutdown();
-                initialized = false;
+        /// <summary>
+        /// Called when the engine is shut down.
+        ///
+        /// Shutdown handlers are run in reverse order they were added, so that
+        /// resources available when running a shutdown handler are the same as
+        /// what was available when it was added.
+        /// </summary>
+        public delegate void ShutdownHandler();
+
+        static List<ShutdownHandler> ShutdownHandlers = new List<ShutdownHandler>();
+
+        /// <summary>
+        /// Add a function to be called when the engine is shut down.
+        ///
+        /// Shutdown handlers are executed in the opposite order they were
+        /// added, so that you can be sure that everything that was initialized
+        /// when you added the handler is still initialized when you need to shut
+        /// down.
+        ///
+        /// If the same shutdown handler is added several times, it will be run
+        /// several times.
+        ///
+        /// Don't add shutdown handlers while running a shutdown handler.
+        /// </summary>
+        public static void AddShutdownHandler(ShutdownHandler handler)
+        {
+            ShutdownHandlers.Add(handler);
+        }
+
+        /// <summary>
+        /// Remove a shutdown handler.
+        ///
+        /// If the same shutdown handler is added several times, only the last
+        /// one is removed.
+        ///
+        /// Don't remove shutdown handlers while running a shutdown handler.
+        /// </summary>
+        public static void RemoveShutdownHandler(ShutdownHandler handler)
+        {
+            for (int index = ShutdownHandlers.Count - 1; index >= 0; --index)
+            {
+                if (ShutdownHandlers[index] == handler)
+                {
+                    ShutdownHandlers.RemoveAt(index);
+                    break;
+                }
             }
         }
 
+        /// <summary>
+        /// Run all the shutdown handlers.
+        ///
+        /// They're run in opposite order they were added.
+        /// </summary>
+        static void ExecuteShutdownHandlers()
+        {
+            while(ShutdownHandlers.Count > 0)
+            {
+                var handler = ShutdownHandlers[ShutdownHandlers.Count - 1];
+                ShutdownHandlers.RemoveAt(ShutdownHandlers.Count - 1);
+                handler();
+            }
+        }
 
         /// <summary>
         /// AcquireLock Method
@@ -386,7 +491,7 @@ namespace Python.Runtime
         public static PyObject ImportModule(string name)
         {
             IntPtr op = Runtime.PyImport_ImportModule(name);
-            Runtime.CheckExceptionOccurred();
+            PythonException.ThrowIfIsNull(op);
             return new PyObject(op);
         }
 
@@ -401,7 +506,7 @@ namespace Python.Runtime
         public static PyObject ReloadModule(PyObject module)
         {
             IntPtr op = Runtime.PyImport_ReloadModule(module.Handle);
-            Runtime.CheckExceptionOccurred();
+            PythonException.ThrowIfIsNull(op);
             return new PyObject(op);
         }
 
@@ -415,18 +520,18 @@ namespace Python.Runtime
         /// </remarks>
         public static PyObject ModuleFromString(string name, string code)
         {
-            IntPtr c = Runtime.Py_CompileString(code, "none", (IntPtr)257);
-            Runtime.CheckExceptionOccurred();
+            IntPtr c = Runtime.Py_CompileString(code, "none", (int)RunFlagType.File);
+            PythonException.ThrowIfIsNull(c);
             IntPtr m = Runtime.PyImport_ExecCodeModule(name, c);
-            Runtime.CheckExceptionOccurred();
+            PythonException.ThrowIfIsNull(m);
             return new PyObject(m);
         }
 
         public static PyObject Compile(string code, string filename = "", RunFlagType mode = RunFlagType.File)
         {
-            var flag = (IntPtr)mode;
+            var flag = (int)mode;
             IntPtr ptr = Runtime.Py_CompileString(code, filename, flag);
-            Runtime.CheckExceptionOccurred();
+            PythonException.ThrowIfIsNull(ptr);
             return new PyObject(ptr);
         }
 
@@ -453,12 +558,13 @@ namespace Python.Runtime
         /// </remarks>
         public static void Exec(string code, IntPtr? globals = null, IntPtr? locals = null)
         {
-            PyObject result = RunString(code, globals, locals, RunFlagType.File);
-            if (result.obj != Runtime.PyNone)
+            using (PyObject result = RunString(code, globals, locals, RunFlagType.File))
             {
-                throw new PythonException();
+                if (result.obj != Runtime.PyNone)
+                {
+                    throw new PythonException();
+                }
             }
-            result.Dispose();
         }
 
 
@@ -496,7 +602,7 @@ namespace Python.Runtime
                     borrowedGlobals = false;
                 }
             }
-            
+
             if (locals == null)
             {
                 locals = globals;
@@ -504,13 +610,11 @@ namespace Python.Runtime
 
             try
             {
-                IntPtr result = Runtime.PyRun_String(
-                    code, (IntPtr)flag, globals.Value, locals.Value
+                NewReference result = Runtime.PyRun_String(
+                    code, flag, globals.Value, locals.Value
                 );
-
-                Runtime.CheckExceptionOccurred();
-
-                return new PyObject(result);
+                PythonException.ThrowIfIsNull(result);
+                return result.MoveToPyObject();
             }
             finally
             {
@@ -522,7 +626,7 @@ namespace Python.Runtime
         }
     }
 
-    public enum RunFlagType
+    public enum RunFlagType : int
     {
         Single = 256,
         File = 257, /* Py_file_input */
@@ -552,10 +656,11 @@ namespace Python.Runtime
             var scope = PyScopeManager.Global.Create(name);
             return scope;
         }
-        
+
         public class GILState : IDisposable
         {
-            private IntPtr state;
+            private readonly IntPtr state;
+            private bool isDisposed;
 
             internal GILState()
             {
@@ -564,8 +669,11 @@ namespace Python.Runtime
 
             public void Dispose()
             {
+                if (this.isDisposed) return;
+
                 PythonEngine.ReleaseLock(state);
                 GC.SuppressFinalize(this);
+                this.isDisposed = true;
             }
 
             ~GILState()
@@ -649,7 +757,7 @@ namespace Python.Runtime
 
         public static void With(PyObject obj, Action<dynamic> Body)
         {
-            // Behavior described here: 
+            // Behavior described here:
             // https://docs.python.org/2/reference/datamodel.html#with-statement-context-managers
 
             IntPtr type = Runtime.PyNone;
@@ -666,11 +774,14 @@ namespace Python.Runtime
             catch (PythonException e)
             {
                 ex = e;
-                type = ex.PyType;
-                val = ex.PyValue;
-                traceBack = ex.PyTB;
+                type = ex.PyType.Coalesce(type);
+                val = ex.PyValue.Coalesce(val);
+                traceBack = ex.PyTB.Coalesce(traceBack);
             }
 
+            Runtime.XIncref(type);
+            Runtime.XIncref(val);
+            Runtime.XIncref(traceBack);
             var exitResult = obj.InvokeMethod("__exit__", new PyObject(type), new PyObject(val), new PyObject(traceBack));
 
             if (ex != null && !exitResult.IsTrue()) throw ex;

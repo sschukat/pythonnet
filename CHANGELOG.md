@@ -1,41 +1,142 @@
 # Changelog
 
-All notable changes to Python for .NET will be documented in this file.
-This project adheres to [Semantic Versioning][].
+All notable changes to Python.NET will be documented in this file. This
+project adheres to [Semantic Versioning][].
 
 This document follows the conventions laid out in [Keep a CHANGELOG][].
 
-## [unreleased][]
+## [Unreleased][]
 
 ### Added
+
+### Changed
+-   Drop support for Python 2, 3.4, and 3.5
+-   `clr.AddReference` may now throw errors besides `FileNotFoundException`, that provide more
+details about the cause of the failure
+-   `clr.AddReference` no longer adds ".dll" implicitly
+-   `PyIter(PyObject)` constructor replaced with static `PyIter.GetIter(PyObject)` method
+-    Return values from .NET methods that return an interface are now automatically
+     wrapped in that interface. This is a breaking change for users that rely on being
+     able to access members that are part of the implementation class, but not the
+     interface.  Use the new __implementation__ or __raw_implementation__ properties to
+     if you need to "downcast" to the implementation class.
+
+### Fixed
+
+-    Fix incorrect dereference of wrapper object in `tp_repr`, which may result in a program crash
+-    Fix incorrect dereference in params array handling
+-    Fix `object[]` parameters taking precedence when should not in overload resolution
+-    Fixed a bug where all .NET class instances were considered Iterable
+-    Fix incorrect choice of method to invoke when using keyword arguments.
+-    Fix non-delegate types incorrectly appearing as callable.
+-    Indexers can now be used with interface objects
+-    Fixed a bug where indexers could not be used if they were inherited
+-    Made it possible to use `__len__` also on `ICollection<>` interface objects
+
+## [2.5.0][] - 2020-06-14
+
+This version improves performance on benchmarks significantly compared to 2.3.
+
+### Added
+
+-   Automatic NuGet package generation in appveyor and local builds
+-   Function that sets `Py_NoSiteFlag` to 1.
+-   Support for Jetson Nano.
+-   Support for `__len__` for .NET classes that implement ICollection
+-   `PyExport` attribute to hide .NET types from Python
+-   `PythonException.Format` method to format exceptions the same as
+    `traceback.format_exception`
+-   `Runtime.None` to be able to pass `None` as parameter into Python from .NET
+-   `PyObject.IsNone()` to check if a Python object is None in .NET.
+-   Support for Python 3.8
+-   Codecs as the designated way to handle automatic conversions between
+    .NET and Python types
+-   Added Python 3 buffer api support and PyBuffer interface for fast byte and numpy array read/write ([#980][p980])
+
+### Changed
+
+-   Added argument types information to "No method matches given arguments" message
+-   Moved wheel import in setup.py inside of a try/except to prevent pip collection failures
+-   Removes `PyLong_GetMax` and `PyClass_New` when targetting Python3
+-   Improved performance of calls from Python to C#
+-   Added support for converting python iterators to C# arrays
+-   Changed usage of the obsolete function
+    `GetDelegateForFunctionPointer(IntPtr, Type)` to
+    `GetDelegateForFunctionPointer<TDelegate>(IntPtr)`
+-   When calling C# from Python, enable passing argument of any type to a
+    parameter of C# type `object` by wrapping it into `PyObject` instance.
+    ([#881][i881])
+-   Added support for kwarg parameters when calling .NET methods from Python
+-   Changed method for finding MSBuild using vswhere
+-   Reworked `Finalizer`. Now objects drop into its queue upon finalization,
+    which is periodically drained when new objects are created.
+-   Marked `Runtime.OperatingSystemName` and `Runtime.MachineName` as
+    `Obsolete`, should never have been `public` in the first place. They also
+    don't necessarily return a result that matches the `platform` module's.
+-   Unconditionally depend on `pycparser` for the interop module generation
+
+### Fixed
+
+-   Fixed runtime that fails loading when using pythonnet in an environment
+    together with Nuitka
+-   Fixes bug where delegates get casts (dotnetcore)
+-   Determine size of interpreter longs at runtime
+-   Handling exceptions ocurred in ModuleObject's getattribute
+-   Fill `__classcell__` correctly for Python subclasses of .NET types
+-   Fixed issue with params methods that are not passed an array.
+-   Use UTF8 to encode strings passed to `PyRun_String` on Python 3
+
+## [2.4.0][] - 2019-05-15
+
+### Added
+
 -   Added support for embedding python into dotnet core 2.0 (NetStandard 2.0)
 -   Added new build system (pythonnet.15.sln) based on dotnetcore-sdk/xplat(crossplatform msbuild).
     Currently there two side-by-side build systems that produces the same output (net40) from the same sources.
     After a some transition time, current (mono/ msbuild 14.0) build system will be removed.
 -   NUnit upgraded to 3.7 (eliminates travis-ci random bug)
+-   Added C# `PythonEngine.AddShutdownHandler` to help client code clean up on shutdown.
 -   Added `clr.GetClrType` ([#432][i432])([#433][p433])
 -   Allowed passing `None` for nullable args ([#460][p460])
 -   Added keyword arguments based on C# syntax for calling CPython methods ([#461][p461])
 -   Catches exceptions thrown in C# iterators (yield returns) and rethrows them in python ([#475][i475])([#693][p693])
 -   Implemented GetDynamicMemberNames() for PyObject to allow dynamic object members to be visible in the debugger ([#443][i443])([#690][p690])
 -   Incorporated reference-style links to issues and pull requests in the CHANGELOG ([#608][i608])
+-   Added PyObject finalizer support, Python objects referred by C# can be auto collect now ([#692][p692]).
+-   Added detailed comments about aproaches and dangers to handle multi-app-domains ([#625][p625])
+-   Python 3.7 support, builds and testing added. Defaults changed from Python 3.6 to 3.7 ([#698][p698])
+-   Added support for C# types to provide `__repr__` ([#680][p680])
 
 ### Changed
 
+-   PythonException included C# call stack
+-   Reattach python exception traceback information (#545)
+-   PythonEngine.Intialize will now call `Py_InitializeEx` with a default value of 0, so signals will not be configured by default on embedding. This is different from the previous behaviour, where `Py_Initialize` was called instead, which sets initSigs to 1. ([#449][i449])
+-   Refactored MethodBinder.Bind in preparation to make it extensible (#829)
+-   Look for installed Windows 10 sdk's during installation instead of relying on specific versions.
+-   Remove `LoadLibrary` call. ([#880][p880])
+
 ### Fixed
 
+-   Fixed secondary PythonEngine.Initialize call, all sensitive static variables now reseted.
+    This is a hidden bug. Once python cleaning up enough memory, objects from previous engine run becomes corrupted. ([#534][p534])
 -   Fixed Visual Studio 2017 compat ([#434][i434]) for setup.py
+-   Fixed crashes when integrating pythonnet in Unity3d ([#714][i714]),
+    related to unloading the Application Domain
+-   Fixed interop methods with Py_ssize_t. NetCoreApp 2.0 is more sensitive than net40 and requires this fix. ([#531][p531])
 -   Fixed crash on exit of the Python interpreter if a python class
     derived from a .NET class has a `__namespace__` or `__assembly__`
     attribute ([#481][i481])
 -   Fixed conversion of 'float' and 'double' values ([#486][i486])
 -   Fixed 'clrmethod' for python 2 ([#492][i492])
 -   Fixed double calling of constructor when deriving from .NET class ([#495][i495])
--   Fixed `clr.GetClrType` when iterating over `System` members ([#607][p607]) 
+-   Fixed `clr.GetClrType` when iterating over `System` members ([#607][p607])
 -   Fixed `LockRecursionException` when loading assemblies ([#627][i627])
 -   Fixed errors breaking .NET Remoting on method invoke ([#276][i276])
 -   Fixed PyObject.GetHashCode ([#676][i676])
 -   Fix memory leaks due to spurious handle incrementation ([#691][i691])
+-   Fix spurious assembly loading exceptions from private types ([#703][i703])
+-   Fix inheritance of non-abstract base methods ([#755][i755])
 
 
 ## [2.3.0][] - 2017-03-11
@@ -593,6 +694,7 @@ This document follows the conventions laid out in [Keep a CHANGELOG][].
 
 [1.0.0]: https://github.com/pythonnet/pythonnet/releases/tag/1.0
 
+[i714]: https://github.com/pythonnet/pythonnet/issues/714
 [i608]: https://github.com/pythonnet/pythonnet/issues/608
 [i443]: https://github.com/pythonnet/pythonnet/issues/443
 [p690]: https://github.com/pythonnet/pythonnet/pull/690
@@ -683,4 +785,9 @@ This document follows the conventions laid out in [Keep a CHANGELOG][].
 [p225]: https://github.com/pythonnet/pythonnet/pull/225
 [p78]: https://github.com/pythonnet/pythonnet/pull/78
 [p163]: https://github.com/pythonnet/pythonnet/pull/163
+[p625]: https://github.com/pythonnet/pythonnet/pull/625
 [i131]: https://github.com/pythonnet/pythonnet/issues/131
+[p531]: https://github.com/pythonnet/pythonnet/pull/531
+[i755]: https://github.com/pythonnet/pythonnet/pull/755
+[p534]: https://github.com/pythonnet/pythonnet/pull/534
+[i449]: https://github.com/pythonnet/pythonnet/issues/449

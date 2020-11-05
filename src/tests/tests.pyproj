@@ -28,7 +28,6 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="__init__.py" />
-    <Compile Include="_compat.py" />
     <Compile Include="_missing_import.py" />
     <Compile Include="leaktest.py" />
     <Compile Include="profile.py" />
@@ -59,6 +58,7 @@
     <Compile Include="test_recursive_types.py" />
     <Compile Include="test_subclass.py" />
     <Compile Include="test_thread.py" />
+    <Compile Include="test_repr.py" />
     <Compile Include="utils.py" />
     <Compile Include="fixtures\argv-fixture.py" />
   </ItemGroup>

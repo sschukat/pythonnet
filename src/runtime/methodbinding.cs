@@ -9,6 +9,7 @@ namespace Python.Runtime
     /// standard Python method bindings, but the same type is used to bind
     /// both static and instance methods.
     /// </summary>
+    [Serializable]
     internal class MethodBinding : ExtensionType
     {
         internal MethodInfo info;
@@ -21,11 +22,15 @@ namespace Python.Runtime
             Runtime.XIncref(target);
             this.target = target;
 
-            Runtime.XIncref(targetType);
             if (targetType == IntPtr.Zero)
             {
                 targetType = Runtime.PyObject_Type(target);
             }
+            else
+            {
+                Runtime.XIncref(targetType);
+            }
+            
             this.targetType = targetType;
 
             this.info = null;
@@ -34,6 +39,12 @@ namespace Python.Runtime
 
         public MethodBinding(MethodObject m, IntPtr target) : this(m, target, IntPtr.Zero)
         {
+        }
+
+        private void ClearMembers()
+        {
+            Runtime.Py_CLEAR(ref target);
+            Runtime.Py_CLEAR(ref targetType);
         }
 
         /// <summary>
@@ -104,7 +115,7 @@ namespace Python.Runtime
             {
                 if (self.info.IsGenericMethod)
                 {
-                    int len = Runtime.PyTuple_Size(args); //FIXME: Never used
+                    var len = Runtime.PyTuple_Size(args); //FIXME: Never used
                     Type[] sigTp = Runtime.PythonArgsToTypeArray(args, true);
                     if (sigTp != null)
                     {
@@ -129,7 +140,7 @@ namespace Python.Runtime
 
                 if (target == IntPtr.Zero && !self.m.IsStatic())
                 {
-                    int len = Runtime.PyTuple_Size(args);
+                    var len = Runtime.PyTuple_Size(args);
                     if (len < 1)
                     {
                         Exceptions.SetError(Exceptions.TypeError, "not enough arguments");
@@ -237,9 +248,22 @@ namespace Python.Runtime
         public new static void tp_dealloc(IntPtr ob)
         {
             var self = (MethodBinding)GetManagedObject(ob);
-            Runtime.XDecref(self.target);
-            Runtime.XDecref(self.targetType);
-            FinalizeObject(self);
+            self.ClearMembers();
+            self.Dealloc();
+        }
+
+        public static int tp_clear(IntPtr ob)
+        {
+            var self = (MethodBinding)GetManagedObject(ob);
+            self.ClearMembers();
+            return 0;
+        }
+
+        protected override void OnSave(InterDomainContext context)
+        {
+            base.OnSave(context);
+            Runtime.XIncref(target);
+            Runtime.XIncref(targetType);
         }
     }
 }

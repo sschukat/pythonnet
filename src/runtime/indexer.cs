@@ -6,6 +6,7 @@ namespace Python.Runtime
     /// <summary>
     /// Bundles the information required to support an indexer property.
     /// </summary>
+    [Serializable]
     internal class Indexer
     {
         public MethodBinder GetterBinder;
@@ -56,7 +57,7 @@ namespace Python.Runtime
 
         internal bool NeedsDefaultArgs(IntPtr args)
         {
-            int pynargs = Runtime.PyTuple_Size(args);
+            var pynargs = Runtime.PyTuple_Size(args);
             MethodBase[] methods = SetterBinder.GetMethods();
             if (methods.Length == 0)
             {
@@ -72,7 +73,7 @@ namespace Python.Runtime
                 return false;
             }
 
-            for (int v = pynargs; v < clrnargs; v++)
+            for (var v = pynargs; v < clrnargs; v++)
             {
                 if (pi[v].DefaultValue == DBNull.Value)
                 {
@@ -95,7 +96,7 @@ namespace Python.Runtime
             {
                 return Runtime.PyTuple_New(0);
             }
-            int pynargs = Runtime.PyTuple_Size(args);
+            var pynargs = Runtime.PyTuple_Size(args);
 
             // Get the default arg tuple
             MethodBase[] methods = SetterBinder.GetMethods();
